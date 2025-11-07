@@ -1,6 +1,6 @@
 dibuatpada 10/6/2025
 kalian boleh memodifikasi tapi harus atas nama IRF 
-dan ini berisi 
+dan ada intergrasi serper api di line 3531 dan ini berisi 
 # 📘 Dokumentasi Singkat IRF (Interaktif Real Feature)
 
 | No | Judul | Deskripsi |
