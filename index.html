@@ -3528,7 +3528,7 @@
 
                 if (!apiKey) {
                     // Gunakan kunci demo jika tidak ada yang diatur oleh pengguna
-                    apiKey = 'ISI API KEY KAMU DISINI INGAT SERPER API';
+                    apiKey = 'ini serper api key';
                 }
 
                 try {
@@ -4062,6 +4062,7 @@
                     <button onclick="triggerCommand('waktu: 10 menit | Ingatkan saya', 'Masukkan Durasi | Pesan')" class="example-prompt-button"><div class="font-semibold">Kapsul Waktu</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Setel pengingat untuk masa depan.</div></button>
                     <button onclick="triggerCommand('kalender')" class="example-prompt-button"><div class="font-semibold">Kalender</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Tampilkan kalender 35 hari.</div></button>
                     <button onclick="triggerCommand('password manager')" class="example-prompt-button"><div class="font-semibold">Password Manager</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Kelola password dengan aman.</div></button>
+                    <button onclick="triggerCommand('password')" class="example-prompt-button"><div class="font-semibold">Password Generator</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Buat kata sandi yang kuat.</div></button>
                     <button onclick="triggerCommand('koding')" class="example-prompt-button"><div class="font-semibold">Area Koding</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Editor kode dengan pratinjau.</div></button>
                     <button onclick="triggerCommand('notepad 1', 'Pilih slot Notepad (1-4)')" class="example-prompt-button"><div class="font-semibold">Notepad</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Simpan catatan cepat.</div></button>
                     <button onclick="triggerCommand('todo list')" class="example-prompt-button"><div class="font-semibold">Papan Tugas</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Atur tugas dengan papan Trello.</div></button>
@@ -4877,12 +4878,14 @@
             }
             function createPasswordGenerator() {
                 const id = `password-${Date.now()}`;
+                // Panggil generator setelah elemen dirender untuk menampilkan password awal
+                setTimeout(() => window.generatePassword(id), 100);
                 return `
         <div class="feature-container text-white" id="${id}"> 
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">🔑 Generator Kata Sandi</h3>
             <div class="bg-gray-100 dark:bg-gray-900 p-3 rounded-lg flex items-center gap-3 mb-4"><code id="password-result-${id}" class="text-lg text-green-600 dark:text-green-300 flex-grow break-all"></code><button onclick="window.copyToClipboard('password-result-${id}')" class="interactive-button text-sm p-2">Salin</button></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="space-y-2"><label class="flex items-center gap-2"><input type="checkbox" id="upper-${id}" checked>Huruf Besar</label><label class="flex items-center gap-2"><input type="checkbox" id="lower-${id}" checked>Huruf Kecil</label><label class="flex items-center gap-2"><input type="checkbox" id="numbers-${id}" checked>Angka</label><label class="flex items-center gap-2"><input type="checkbox" id="symbols-${id}">Simbol</label></div><div><label>Panjang: <span id="length-label-${id}">16</span></label><input type="range" id="length-${id}" min="8" max="32" value="16" class="w-full" oninput="document.getElementById('length-label-${id}').textContent = this.value"></div></div>
-            <button onclick="window.generatePassword('${id}')" class="interactive-button w-full mt-4">Buat Baru ðŸ”„</button>
+            <button onclick="window.generatePassword('${id}')" class="interactive-button w-full mt-4">Buat Baru 🔄</button>
         </div>`;
             }
             function createCodingArea() {
@@ -5172,7 +5175,11 @@
                 if (document.getElementById(`lower-${id}`).checked) charset += 'abcdefghijklmnopqrstuvwxyz';
                 if (document.getElementById(`numbers-${id}`).checked) charset += '0123456789';
                 if (document.getElementById(`symbols-${id}`).checked) charset += '!@#$%^&*()';
-                if (charset === '') { resultEl.textContent = 'Pilih min. 1 set karakter'; return; }
+                if (charset === '') { 
+                    resultEl.textContent = ''; // Kosongkan password jika tidak ada pilihan
+                    alert('Pilih minimal satu jenis karakter.'); 
+                    return; 
+                }
                 resultEl.textContent = new Chance().string({ length, pool: charset });
             }
             window.fetchPrayerTimes = async (id) => { // Menggunakan Aladhan API yang lebih stabil
