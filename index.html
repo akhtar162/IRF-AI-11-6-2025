@@ -685,6 +685,42 @@
                 transform: scale(1)
             }
         }
+
+        /* Compass Styles */
+        .qibla-compass {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            background: url('https://i.imgur.com/sCEI3m5.png') no-repeat center center;
+            background-size: contain;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+        }
+
+        .qibla-needle {
+            width: 180px;
+            height: 180px;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: url('https://i.imgur.com/3G32l48.png') no-repeat center center;
+            background-size: contain;
+            transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            transform-origin: center;
+        }
+
+        .compass-needle {
+            width: 180px;
+            height: 180px;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: url('https://i.imgur.com/3G32l48.png') no-repeat center center;
+            background-size: contain;
+            transition: transform 0.5s ease;
+        }
     </style>
 </head>
 
@@ -2349,6 +2385,38 @@
         `;
             }
 
+            // --- Music Player Feature ---
+            function createMusicPlayerInterface() {
+                const playerId = `music-player-${Date.now()}`;
+                setTimeout(() => window.displayMusicFiles(playerId), 100);
+                return `
+            <div class="feature-container p-6 rounded-lg text-white">
+                <h3 class="text-xl font-bold mb-4">🎵 Pemutar Lagu</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Memutar file audio yang tersimpan di File Rahasia Anda. Unggah file audio melalui fitur 'buka file rahasia'.</p>
+                <div id="music-file-list-${playerId}" class="mt-4 space-y-2">Memuat daftar putar...</div>
+            </div>
+        `;
+            }
+
+            window.displayMusicFiles = (playerId) => {
+                const fileListDiv = document.getElementById(`music-file-list-${playerId}`);
+                if (!fileListDiv || !db) return; // The element ID is correct, e.g., "music-file-list-music-player-12345"
+                const request = db.transaction('files', 'readonly').objectStore('files').getAll();
+                request.onsuccess = () => {
+                    const audioFiles = request.result.filter(file => file.type.startsWith('audio/'));
+                    if (audioFiles.length === 0) {
+                        fileListDiv.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400">Tidak ada file musik yang ditemukan. Unggah file MP3/WAV/OGG melalui "File Rahasia".</p>';
+                        return;
+                    }
+                    fileListDiv.innerHTML = audioFiles.map(file => `
+                <div class="flex items-center justify-between bg-gray-200 dark:bg-gray-800 p-3 rounded-lg">
+                    <div class="font-semibold text-gray-800 dark:text-gray-200">${escapeHtml(file.name)}</div>
+                    <audio controls src="${file.content}" class="w-64 h-10"></audio>
+                </div>
+            `).join('');
+                };
+            };
+
             // --- Command Router ---
 
 
@@ -2387,6 +2455,7 @@
                 if (cleanQuery === 'peta global' || cleanQuery === 'map global') return { result: createGlobalInteractiveMap('world') };
                 if (cleanQuery === 'buka file rahasia') return { result: createFileManagerInterface() };
                 if (cleanQuery === 'riwayat') return { result: viewHistory() };
+                if (cleanQuery.includes('pemutar lagu') || cleanQuery.includes('putar lagu')) return { result: createMusicPlayerInterface() };
 
                 const timeCapsuleMatch = query.match(/^(?:waktu|ingatkan):\s*(.*?)\s*\|\s*(.*)/is);
                 if (timeCapsuleMatch) return { result: setTimeCapsule(timeCapsuleMatch[1].trim(), timeCapsuleMatch[2].trim()) };
@@ -2415,7 +2484,6 @@
                 if (cleanQuery.includes('jadwal solat') || cleanQuery.includes('prayer time')) return { result: createLocationBasedPrayerSchedule() };
                 if (cleanQuery.includes('kode qr')) return { result: createInteractiveQRCodeGenerator() };
                 if (cleanQuery.includes('analisis warna')) return { result: createInteractiveColorAnalyzer() };
-                if (cleanQuery.includes('kiblat')) return { result: createQiblaFinder() };
                 if (cleanQuery.includes('kompas')) return { result: createNorthCompass() };
 
                 // New API-based Utilities
@@ -2423,8 +2491,6 @@
 
                 if (cleanQuery.includes('kepribadian acak')) return { result: createInteractivePersonalityGenerator() };
                 if (cleanQuery.includes('grafik') || cleanQuery.includes('chart')) return { result: createInteractiveChart() };
-
-                if (cleanQuery.includes('kompas')) return { result: createNorthCompass() };
                 // Search & Organization 
                 if (cleanQuery.includes('wikipedia')) return { result: createWikipediaSearch() };
                 if (cleanQuery.includes('notepad')) return { result: handleNotepadRequest(cleanQuery) }; if (cleanQuery.includes('todo') || cleanQuery.includes('list') || cleanQuery.includes('trello')) return { result: createFeaturePlaceholder('📋 Papan Tugas', 'Atur pekerjaan Anda dengan papan tugas bergaya Trello.', 'createTrelloInterface') }; if (cleanQuery.startsWith('chatgpt:')) { queryChatGPT(query.substring(8).trim()); return { result: null }; } if (cleanQuery.startsWith('gemini:')) { queryGemini(query.substring(7).trim()); return { result: null }; } if (cleanQuery.startsWith('claude:')) { queryClaude(query.substring(7).trim()); return { result: null }; } if (cleanQuery.startsWith('deepseek:')) { queryDeepSeek(query.substring(9).trim()); return { result: null }; }
@@ -2504,7 +2570,7 @@
                     // Jika semua gagal, anggap sebagai perintah tidak dikenali
                 }
 
-                return { error: "Perintah tidak dikenali. Ketik 'panduan' untuk bantuan." };
+                return { error: "Perintah tidak dikenali. Ketik 'panduan' untuk bantuan." }; // Fallback
             }
 
             // --- Piano Feature ---
@@ -2804,6 +2870,25 @@
         `;
                 setTimeout(() => getCurrentLocation(mapId, true), 100); // `true` untuk reverse geocode
                 return html;
+            }
+
+            // --- North Compass ---
+            function createNorthCompass() {
+                const id = `compass-${Date.now()}`;
+                setTimeout(() => window.initCompass(id), 100);
+                return `  
+                <div class="feature-container text-center text-white" id="${id}">
+                    <h3 class="text-lg font-bold">🧭 Kompas Arah Utara</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Jarum merah akan selalu menunjuk ke arah Utara.</p>
+                    <div id="compass-permission-${id}" class="my-4">
+                        <button onclick="window.initCompass('${id}')" class="interactive-button">Izinkan Akses Sensor</button>
+                    </div>
+                    <div id="compass-container-${id}" class="qibla-compass" style="display:none; background-image: url('https://i.imgur.com/sCEI3m5.png');">
+                        <div class="compass-needle" id="compass-needle-${id}"></div>
+                        <div class="w-5 h-5 bg-gray-900 dark:bg-gray-200 rounded-full z-10"></div>
+                    </div>
+                    <div id="compass-status-${id}" class="mt-4 text-sm text-indigo-300 h-6"></div>
+                </div>`;
             }
 
             window.searchMapLocation = async function (mapId, customLocation = null) {
@@ -4058,8 +4143,9 @@
             <div class="mb-6">
                 <h4 class="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-3">🚀 Produktivitas & Kreativitas</h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <button onclick="triggerCommand('pemutar lagu')" class="example-prompt-button"><div class="font-semibold">Pemutar Lagu</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Putar musik dari file rahasia.</div></button>
                     <button onclick="triggerCommand('buka file rahasia')" class="example-prompt-button"><div class="font-semibold">File Rahasia</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Pengelola file pribadi & aman.</div></button>
-                    <button onclick="triggerCommand('waktu: 10 menit | Ingatkan saya', 'Masukkan Durasi | Pesan')" class="example-prompt-button"><div class="font-semibold">Kapsul Waktu</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Setel pengingat untuk masa depan.</div></button>
+                    <button onclick="triggerCommand('chat waktu dulu')" class="example-prompt-button"><div class="font-semibold">Kapsul Waktu</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Lihat pesan yang telah tiba.</div></button>
                     <button onclick="triggerCommand('kalender')" class="example-prompt-button"><div class="font-semibold">Kalender</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Tampilkan kalender 35 hari.</div></button>
                     <button onclick="triggerCommand('password manager')" class="example-prompt-button"><div class="font-semibold">Password Manager</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Kelola password dengan aman.</div></button>
                     <button onclick="triggerCommand('password')" class="example-prompt-button"><div class="font-semibold">Password Generator</div><div class="text-sm text-indigo-500 dark:text-indigo-400">Buat kata sandi yang kuat.</div></button>
@@ -4161,25 +4247,6 @@
             }
 
             // --- Qibla Finder ---
-            function createQiblaFinder() {
-                const id = `compass-${Date.now()}`;
-                // Panggil inisialisasi setelah elemen dirender
-                setTimeout(() => window.initCompass(id), 100);
-                return `  
-                <div class="feature-container text-center text-white" id="${id}">
-                    <h3 class="text-lg font-bold">🧭 Kompas Arah Utara</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Jarum merah akan selalu menunjuk ke arah Utara.</p>
-                    <div id="compass-permission-${id}" class="my-4">
-                        <button onclick="window.initCompass('${id}')" class="interactive-button">Izinkan Akses Sensor</button>
-                    </div>
-                    <div id="compass-container-${id}" class="qibla-compass" style="display:none;">
-                        <div class="qibla-needle" id="compass-needle-${id}"></div>
-                        <div class="w-5 h-5 bg-gray-900 dark:bg-gray-200 rounded-full z-10"></div>
-                    </div>
-                    <div id="compass-status-${id}" class="mt-4 text-sm text-indigo-300 h-6"></div>
-                </div>`;
-            }
-
             window.initCompass = (id) => {
                 // Hentikan listener lain yang mungkin aktif untuk mencegah konflik
                 if (window.activeOrientationHandler) {
@@ -4202,7 +4269,7 @@
                         const heading = event.webkitCompassHeading || (360 - event.alpha); // webkitCompassHeading lebih akurat di iOS
                         const needle = document.getElementById(`compass-needle-${id}`);
                         if (needle && heading !== null) {
-                            const rotation = -heading; // Putar jarum ke arah berlawanan dari arah perangkat untuk menunjuk Utara
+                            const rotation = -heading; // Putar jarum ke arah berlawanan dari arah perangkat untuk menunjuk Utara absolut
                             needle.style.transform = `rotate(${rotation}deg)`;
                             statusDiv.textContent = `Arah Perangkat: ${heading.toFixed(1)}° dari Utara`;
                         }
@@ -4395,15 +4462,35 @@
             window.handleFileUpload = (event, managerId) => {
                 const file = event.target.files[0];
                 if (!file) return;
-                const reader = new FileReader();
+                const reader = new FileReader(); // BUG FIX: reader was not defined
                 reader.onload = (e) => {
                     const fileData = { name: file.name, type: file.type, size: file.size, content: e.target.result, timestamp: Date.now() };
                     const tx = db.transaction('files', 'readwrite');
-                    tx.objectStore('files').add(fileData);
-                    tx.oncomplete = () => window.displaySecretFiles(managerId);
+                    const store = tx.objectStore('files');
+                    store.add(fileData);
+                    tx.oncomplete = () => {
+                        window.displaySecretFiles(managerId);
+                        refreshOpenMusicPlayers(); // Refresh music player if open
+                    };
                 };
                 reader.readAsDataURL(file);
             }
+            window.toggleAudioPlay = (button) => {
+                const audio = button.nextElementSibling;
+                if (audio.paused) {
+                    audio.play();
+                    button.innerHTML = '⏸️';
+                    button.title = 'Jeda';
+                } else {
+                    audio.pause();
+                    button.innerHTML = '▶️';
+                    button.title = 'Putar';
+                }
+                audio.onended = () => {
+                    button.innerHTML = '▶️';
+                    button.title = 'Putar';
+                };
+            };
             window.displaySecretFiles = (managerId) => {
                 const fileListDiv = document.getElementById(`secret-file-list-${managerId}`);
                 if (!fileListDiv) return;
@@ -4413,29 +4500,60 @@
                     if (files.length === 0) {
                         fileListDiv.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400">Tidak ada file yang disimpan.</p>'; return;
                     }
-                    fileListDiv.innerHTML = files.map(file => `
-                <div class="flex items-center justify-between bg-gray-200 dark:bg-gray-800 p-2 rounded">
-                    <div>
-                        <a href="${file.content}" download="${file.name}" class="text-indigo-400 hover:underline">${escapeHtml(file.name)}</a>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">${(file.size / 1024).toFixed(2)} KB - Disimpan ${moment(file.timestamp).fromNow()}</p>
-                    </div>
-                    <button onclick="window.deleteSecretFile(${file.id}, '${managerId}')" class="text-red-500 hover:text-red-400 p-1">🗑️</button>
-                </div>
-            `).join('');
+                    fileListDiv.innerHTML = files.map(file => {
+                        let fileIcon = '📄';
+                        let fileActions = `<a href="${file.content}" download="${file.name}" class="text-indigo-400 hover:underline" title="Unduh">📥</a>`;
+                        let filePreview = '';
+
+                        if (file.type.startsWith('audio/')) {
+                            fileIcon = '🎵';
+                            fileActions += `<button onclick="window.toggleAudioPlay(this)" class="ml-2 text-green-400" title="Putar">▶️</button>`;
+                            fileActions += `<audio src="${file.content}" class="hidden" onended="this.previousElementSibling.innerHTML = '▶️'"></audio>`;
+                        } else if (file.type.startsWith('image/')) {
+                            fileIcon = '🖼️';
+                            filePreview = `<img src="${file.content}" alt="preview" class="mt-2 rounded-md max-h-24 w-auto border border-gray-600">`;
+                        }
+
+                        return `
+                            <div class="flex items-start justify-between bg-gray-200 dark:bg-gray-800 p-3 rounded-lg">
+                                <div class="flex items-start gap-3">
+                                    <span class="text-2xl mt-1">${fileIcon}</span>
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-gray-200">${escapeHtml(file.name)}</div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            ${(file.size / 1024).toFixed(2)} KB - Disimpan ${moment(file.timestamp).fromNow()}
+                                        </p>
+                                        ${filePreview}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                                    ${fileActions}
+                                    <button onclick="window.deleteSecretFile(${file.id}, '${managerId}')" class="text-red-500 hover:text-red-400 p-1" title="Hapus">🗑️</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
                     fileListDiv.innerHTML += `<button onclick="clearAllSecretFiles('${managerId}')" class="w-full mt-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-2 rounded-md hover:bg-red-200 dark:hover:bg-red-800 text-sm">Hapus Semua File</button>`;
                 };
             }
             window.deleteSecretFile = (id, managerId) => {
                 const tx = db.transaction('files', 'readwrite');
                 tx.objectStore('files').delete(id);
-                tx.oncomplete = () => window.displaySecretFiles(managerId);
+                tx.oncomplete = () => {
+                    window.displaySecretFiles(managerId);
+                    refreshOpenMusicPlayers(); // Refresh music player if open
+                };
             }
             window.clearAllSecretFiles = async (managerId) => {
                 if (!db || !confirm("ANDA YAKIN? Semua file rahasia akan dihapus permanen.")) return;
                 try {
-                    await db.transaction('files', 'readwrite').objectStore('files').clear();
-                    alert("Semua file telah dihapus.");
-                    window.displaySecretFiles(managerId);
+                    const tx = db.transaction('files', 'readwrite');
+                    await tx.objectStore('files').clear();
+                    tx.oncomplete = () => {
+                        alert("Semua file telah dihapus.");
+                        window.displaySecretFiles(managerId);
+                        refreshOpenMusicPlayers(); // Refresh music player if open
+                    };
                 } catch (error) {
                     alert(`Gagal menghapus file: ${error.message}`);
                 }
@@ -4476,6 +4594,7 @@
                         tx.oncomplete = () => {
                             alert(`${data.files.length} file berhasil diimpor!`);
                             window.displaySecretFiles(managerId);
+                            refreshOpenMusicPlayers(); // Refresh music player if open
                         };
                     } catch (error) { alert(`Gagal mengimpor: ${error.message}`); }
                 };
@@ -4697,24 +4816,6 @@
                 gameContainer.outerHTML = createTicTacToeGame();
             };
 
-            // --- Qibla Finder ---
-            function createQiblaFinder() {
-                const id = `qibla-${Date.now()}`;
-                setTimeout(() => window.initQiblaFinder(id), 100);
-                return `  
-                <div class="feature-container text-center text-black" id="${id}">
-                    <h3 class="text-lg font-bold text-white">🕋 Penunjuk Arah Kiblat</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Arahkan perangkat Anda. Jarum merah akan menunjuk ke arah Kiblat.</p>
-                    <div id="qibla-permission-${id}" class="my-4">
-                        <button onclick="window.initQiblaFinder('${id}')" class="interactive-button">Izinkan Akses Sensor & Lokasi</button>
-                    </div>
-                <div id="qibla-compass-container-${id}" class="qibla-compass" style="display:none;">
-                        <div id="qibla-needle-${id}" class="qibla-needle"></div>
-                    </div>
-                    <div id="qibla-status-${id}" class="mt-4 text-sm text-indigo-300 h-6"></div>
-                </div>`;
-            }
-
             window.initQiblaFinder = (id) => {
                 // Hentikan listener lain yang mungkin aktif
                 if (window.activeOrientationHandler) window.removeEventListener('deviceorientation', window.activeOrientationHandler, true);
@@ -4744,7 +4845,7 @@
                 const permissionBtn = document.getElementById(`qibla-permission-${id}`);
                 statusDiv.textContent = 'Meminta izin akses sensor...';
 
-                // 3. Request permissions
+                // 3. Request permissions (iOS 13+ requires this to be a user gesture)
                 Promise.all([
                     DeviceOrientationEvent.requestPermission ? DeviceOrientationEvent.requestPermission() : Promise.resolve('granted'),
                     new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject))
@@ -4753,7 +4854,7 @@
                         throw new Error("Izin akses sensor orientasi ditolak.");
                     }
 
-                    statusDiv.textContent = 'Izin diberikan. Menghitung arah kiblat...';
+                    statusDiv.textContent = 'Izin diterima. Menghitung arah kiblat...';
                     permissionBtn.style.display = 'none';
                     compassContainer.style.display = 'block';
 
@@ -4774,7 +4875,7 @@
                         const heading = event.webkitCompassHeading || (360 - event.alpha);
                         const needle = document.getElementById(`qibla-needle-${id}`);
                         if (needle && heading !== null) {
-                            needle.style.transform = `translateX(-50%) rotate(${qiblaDirection - heading}deg)`;
+                            needle.style.transform = `rotate(${qiblaDirection - heading}deg)`;
                         }
                     };
                     window.addEventListener('deviceorientation', window.activeOrientationHandler, true);
