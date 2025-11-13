@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Asisten Interaktif Ultimate</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.10"></script>
 
     <!-- Math Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js" defer></script>
@@ -1412,6 +1412,53 @@
                 }, 3000);
             }
 
+            // === Prevent Dev Tools & Console Access (Enhanced Deterrent) ===
+            // Catatan: Ini bukan langkah keamanan yang sepenuhnya aman, tetapi berfungsi sebagai pencegah yang lebih kuat.
+            // Dipindahkan ke sini agar `showToast` sudah terdefinisi.
+            document.addEventListener('keydown', function (event) {
+                const key = event.key.toLowerCase();
+                const ctrl = event.ctrlKey;
+                const shift = event.shiftKey;
+
+                // Blokir kombinasi tombol umum untuk alat pengembang
+                if (key === 'f12' || (ctrl && shift && (key === 'i' || key === 'j' || key === 'c')) || (ctrl && key === 'u') || (ctrl && key === 's')) {
+                    event.preventDefault();
+                    let message = 'Akses dibatasi! Fokus ke fitur kerennya aja, yuk! 😉';
+                    if (key === 'f12') message = 'Haha, niat banget mau bongkar dalemanku 🤣.';
+                    if (ctrl && shift && key === 'i') message = 'Ctrl+Shift+I? Jalan pintas para detektif kode! 🕵️‍♂️';
+                    if (ctrl && shift && key === 'j') message = 'Mau lihat console? Isinya cuma log rindu, kok. 😜';
+                    if (ctrl && shift && key === 'c') message = 'Inspeksi elemen ya? Awas, nanti jatuh hati. ❤️';
+                    if (ctrl && key === 'u') message = 'Cieee pencet Ctrl+U... gagal dong 😎.';
+                    if (ctrl && key === 's') message = 'Mau disimpan? Aku sudah tersimpan di hatimu, kan? 😉';
+                    showToast(message, 'warning');
+                }
+            });
+
+            // Blokir menu klik kanan
+            document.addEventListener('contextmenu', function (event) {
+                event.preventDefault();
+                showToast('Heh, mau ngintip source ya? Ketahuan 😝.', 'warning');
+            });
+
+            // Deteksi jika DevTools dibuka (dengan memeriksa perubahan ukuran window)
+            const devtools = { open: false, orientation: null };
+            const threshold = 170;
+            const emitEvent = (isOpen, orientation) => {
+                if (devtools.open !== isOpen || devtools.orientation !== orientation) {
+                    if (isOpen) {
+                        showToast('Waduh, DevTools terdeteksi terbuka! 😲', 'error');
+                        // document.body.innerHTML = '<h1>Akses ditolak.</h1>'; // Opsi tindakan lebih keras
+                    }
+                    devtools.open = isOpen;
+                    devtools.orientation = orientation;
+                }
+            };
+            setInterval(() => {
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                if (!(heightThreshold && widthThreshold) && ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) || widthThreshold || heightThreshold)) { emitEvent(true, widthThreshold ? 'vertical' : 'horizontal'); } else { emitEvent(false, null); }
+            }, 500);
+
             function updateActiveModelUI() {
                 const modelButtons = document.querySelectorAll('#model-list button');
                 const webLlmBtn = document.getElementById('webllm-model-btn');
@@ -2456,6 +2503,16 @@
                 if (cleanQuery === 'buka file rahasia') return { result: createFileManagerInterface() };
                 if (cleanQuery === 'riwayat') return { result: viewHistory() };
                 if (cleanQuery.includes('pemutar lagu') || cleanQuery.includes('putar lagu')) return { result: createMusicPlayerInterface() };
+
+                // --- Fitur AI Menulis di Notepad ---
+                const writeToNotepadMatch = cleanQuery.match(/^tulis(?:kan)?\s+di\s+notepad\s*(\d+)\s*:\s*(.*)/is);
+                if (writeToNotepadMatch) {
+                    const notepadNumber = parseInt(writeToNotepadMatch[1], 10);
+                    const contentToWrite = writeToNotepadMatch[2].trim();
+                    return { result: writeToNotepadByAI(notepadNumber, contentToWrite) };
+                    writeToNotepadByAI(notepadNumber, contentToWrite);
+                    return { result: null }; // Kembalikan null agar tidak ada balasan di chat
+                }
 
                 const timeCapsuleMatch = query.match(/^(?:waktu|ingatkan):\s*(.*?)\s*\|\s*(.*)/is);
                 if (timeCapsuleMatch) return { result: setTimeCapsule(timeCapsuleMatch[1].trim(), timeCapsuleMatch[2].trim()) };
@@ -5087,6 +5144,29 @@
                 const savedNote = localStorage.getItem(`notepad_${notepadNumber}`) || '';
                 return `
         <div class="feature-container text-white" id="${id}"><h3 class="text-lg font-bold">📝 Notepad ${notepadNumber}</h3><textarea id="note-content-${id}" class="interactive-textarea h-32" placeholder="Tulis catatan Anda...">${savedNote}</textarea><button onclick="window.saveNotepad('${id}', ${notepadNumber})" class="interactive-button bg-green-600 hover:bg-green-700 mt-2">Simpan</button><div id="response-${id}" class="mt-2 text-sm"></div></div>`;
+            }
+
+            function writeToNotepadByAI(notepadNumber, content) {
+                if (notepadNumber < 1 || notepadNumber > 4) {
+                    return marked.parse("❌ **Error:** Notepad hanya tersedia untuk slot 1-4.");
+                    showToast("❌ Error: Notepad hanya tersedia untuk slot 1-4.", 'error');
+                    return;
+                }
+
+                // Simpan konten ke localStorage
+                localStorage.setItem(`notepad_${notepadNumber}`, content);
+
+                // Jika UI notepad sedang terbuka, perbarui textarea-nya secara real-time
+                // Cari dan perbarui textarea di UI notepad yang sedang aktif
+                const activeNotepadTextarea = document.querySelector(`textarea[id^="note-content-notepad-${notepadNumber}-"]`);
+                if (activeNotepadTextarea) {
+                    activeNotepadTextarea.value = content;
+                }
+
+                // Berikan pesan konfirmasi
+                return marked.parse(`✅ **Berhasil!** Saya telah menulis di **Notepad ${notepadNumber}**.`);
+                // Berikan notifikasi toast sebagai konfirmasi, bukan pesan chat
+                showToast(`✅ Berhasil menulis di Notepad ${notepadNumber}!`, 'success');
             }
             // --- Trello-like Board ---
             function createTrelloInterface() {
